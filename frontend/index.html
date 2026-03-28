@@ -16,11 +16,14 @@
 async function search() {
   let phone = document.getElementById("phone").value;
 
-  let res = await fetch("https://trustnet-api-farhan.onrender.com/");
+  let res = await fetch(
+    "https://trustnet-api-farhan.onrender.com/user/" + phone
+  );
+
   let data = await res.json();
 
- document.getElementById("result").innerText =
-  data.message;
+  document.getElementById("result").innerText =
+    JSON.stringify(data, null, 2);
 }
 </script>
 
