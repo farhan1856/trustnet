@@ -14,6 +14,9 @@
 
 <script>
 async function search() {
+  alert("Button clicked");   // 👈 test
+}
+async function search() {
   let phone = document.getElementById("phone").value;
 
   let res = await fetch(
