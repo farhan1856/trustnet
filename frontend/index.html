@@ -19,8 +19,8 @@ async function search() {
   let res = await fetch("https://trustnet-api-farhan.onrender.com/");
   let data = await res.json();
 
-  document.getElementById("result").innerText =
-    JSON.stringify(data, null, 2);
+ document.getElementById("result").innerText =
+  data.message;
 }
 </script>
 
