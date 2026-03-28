@@ -1,9 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pymongo import MongoClient
+from jose import jwt
+from passlib.context import CryptContext
 
 app = FastAPI()
 
-# Enable CORS
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -12,51 +15,76 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-users = []
-reviews = []
+# MongoDB
+client = MongoClient("YOUR_MONGO_URL")
+db = client["trustnet"]
+users = db["users"]
+reviews = db["reviews"]
 
-@app.get("/")
-def home():
-    return {"message": "API working"}
+# JWT
+SECRET = "mysecretkey"
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# 🔐 Register
+# Register
 @app.post("/register")
 def register(user: dict):
+    user["password"] = pwd_context.hash(user["password"])
     user["trust_score"] = 50
-    users.append(user)
+    users.insert_one(user)
     return {"message": "User registered"}
 
-# 🔐 Login
+# Login
 @app.post("/login")
 def login(data: dict):
-    for u in users:
-        if u["phone"] == data["phone"]:
-            return {"message": "Login success", "user": u}
-    return {"message": "User not found"}
+    user = users.find_one({"phone": data["phone"]})
 
-# 👤 Get user
+    if not user or not pwd_context.verify(data["password"], user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = jwt.encode({"phone": user["phone"]}, SECRET)
+    return {"token": token}
+
+# Get user
 @app.get("/user/{phone}")
 def get_user(phone: str):
-    for u in users:
-        if u["phone"] == phone:
-            return u
-    return {"detail": "Not Found"}
+    user = users.find_one({"phone": phone}, {"_id": 0})
+    if not user:
+        return {"detail": "Not Found"}
+    return user
 
-# 💬 Add review
+# Add review
 @app.post("/review")
 def add_review(review: dict):
-    reviews.append(review)
+    reviews.insert_one(review)
 
-    for u in users:
-        if u["phone"] == review["phone"]:
-            if review["rating"] >= 4:
-                u["trust_score"] += 5
-            else:
-                u["trust_score"] -= 5
+    if review["rating"] >= 4:
+        users.update_one({"phone": review["phone"]}, {"$inc": {"trust_score": 5}})
+    else:
+        users.update_one({"phone": review["phone"]}, {"$inc": {"trust_score": -5}})
 
     return {"message": "Review added"}
 
-# 💬 Get reviews
+# Get reviews
 @app.get("/reviews/{phone}")
 def get_reviews(phone: str):
-    return [r for r in reviews if r["phone"] == phone]
+    return list(reviews.find({"phone": phone}, {"_id": 0}))
+
+# 🤖 Simple AI Fraud Detection
+@app.get("/fraud-check/{phone}")
+def fraud_check(phone: str):
+    user_reviews = list(reviews.find({"phone": phone}))
+    
+    bad = sum(1 for r in user_reviews if r["rating"] <= 2)
+    total = len(user_reviews)
+
+    if total == 0:
+        return {"risk": "Unknown"}
+
+    score = bad / total
+
+    if score > 0.5:
+        return {"risk": "High Risk 🚨"}
+    elif score > 0.2:
+        return {"risk": "Medium Risk ⚠️"}
+    else:
+        return {"risk": "Low Risk ✅"}
