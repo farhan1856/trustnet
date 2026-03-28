@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TrustNet</title>
+</head>
+<body>
+
+<h1>TrustNet</h1>
+
+<input id="phone" placeholder="Enter phone">
+<button onclick="search()">Search</button>
+
+<pre id="result"></pre>
+
+<script>
+async function search() {
+  let phone = document.getElementById("phone").value;
+
+  let res = await fetch("https://your-render-link.onrender.com/");
+  let data = await res.json();
+
+  document.getElementById("result").innerText =
+    JSON.stringify(data, null, 2);
+}
+</script>
+
+</body>
+</html>
