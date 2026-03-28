@@ -23,7 +23,9 @@ async function search() {
   let data = await res.json();
 
   document.getElementById("result").innerText =
-    JSON.stringify(data, null, 2);
+  "Name: " + data.name + "\n" +
+  "Phone: " + data.phone + "\n" +
+  "Trust Score: ⭐ " + data.trust_score;
 }
 </script>
 
